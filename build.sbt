@@ -7,6 +7,12 @@ lazy val root = (project in file("."))
     name := "TipoDis"
   )
 
+enablePlugins(JavaAppPackaging)
+enablePlugins(DockerPlugin)
+
+maintainer := "AndreyKa"
+Compile / mainClass := Some("com.andreyka.Main.run")
+
 val zioVersion = "2.1.6"
 libraryDependencies ++= Seq(
   "dev.zio" %% "zio" % zioVersion,

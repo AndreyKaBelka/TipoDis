@@ -1,3 +1,5 @@
+package com.andreyka
+
 import routes.WebsocketSound
 import service.{RequestHandler, RoomService, SessionService, SoundService}
 import zio.config.typesafe.TypesafeConfigProvider
