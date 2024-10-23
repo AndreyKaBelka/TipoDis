@@ -2,8 +2,9 @@ package routes
 
 import model._
 import service.{RequestHandler, SessionService}
-import zio.http.ChannelEvent.{ExceptionCaught, Read, UserEvent, UserEventTriggered}
-import zio.http.{Handler, Method, Response, Route, WebSocketApp, WebSocketChannel, WebSocketFrame, handler}
+import zio.http.ChannelEvent.{ExceptionCaught, Read, Unregistered, UserEvent, UserEventTriggered}
+import zio.http.WebSocketFrame.Close
+import zio.http.{Handler, Method, Request, Response, Route, WebSocketApp, WebSocketChannel, WebSocketFrame, handler}
 import zio.json.{DecoderOps, EncoderOps}
 import zio.{Cause, Task, ZIO, ZLayer}
 
@@ -25,14 +26,19 @@ case class WebsocketSound(requestHandler: RequestHandler, sessionService: Sessio
           err => send(Error(err)),
           suc => requestHandler.handle(suc).flatMap(send)
         )
+
+      case Unregistered =>
+        ZIO.log(s"Removing session") *> sessionService.removeSession(channel)
+
       case ExceptionCaught(cause) => ZIO.logError(s"Channel error!: ${cause.getMessage}")
 
       case _ => ZIO.unit
     }
   }
 
-  private def send(data: Out)(implicit channel: WebSocketChannel): Task[Unit] =
+  private def send(data: Out)(implicit channel: WebSocketChannel): Task[Unit] = {
     channel.send(Read(WebSocketFrame.Text(data.toJson)))
+  }
 
 
   val route: Route[Any, Response] = Method.GET / "ws" -> handler(socketApp.toResponse)

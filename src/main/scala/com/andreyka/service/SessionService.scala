@@ -12,8 +12,8 @@ case class SessionService(private val sessions: Ref[Set[Session]]) {
     _ <- sessions.update(_ + Session(session, user))
   } yield ()
 
-  def removeSession(user: User): Task[Unit] = for {
-    _ <- sessions.updateAndGet(_.filter(_.user.userId == user.userId))
+  def removeSession(socket: WebSocketChannel): Task[Unit] = for {
+    _ <- sessions.updateAndGet(_.filterNot(_.socket == socket))
   } yield ()
 
   def getSession(user: User): Task[Session] = for {
