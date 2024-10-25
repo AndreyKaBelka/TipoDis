@@ -12,9 +12,11 @@ case class SoundService(roomService: RoomService) {
     _ <- ZIO.log(s"Broadcasting message: room ${soundFrame.room}, user: ${soundFrame.user}")
     room <- roomService.findRoom(soundFrame.room)
     sessions = room.sessions.filterNot(_.user.userId == soundFrame.user.userId)
-    _ <- ZIO.foreach(sessions)(session => session.socket.send(
+    errors <- ZIO.partitionPar(sessions)(session => session.socket.send(
       Read(WebSocketFrame.Text(soundFrame.toJson))
     ))
+    _ <- ZIO.log(s"Some errors occurred: ${errors._1.size}, firstError: ${errors._1.headOption}")
+      .when(errors._1.nonEmpty)
   } yield ()
 }
 
