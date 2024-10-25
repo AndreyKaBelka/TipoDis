@@ -25,7 +25,7 @@ case class RequestHandler(
     case RoomsList() => roomService.allRooms.map(RoomsListResponse)
     case SessionsList() => sessionService.allSessions.map(SessionsListResponse)
     case Voice(soundFrame) => soundService.broadcast(soundFrame).as(Empty()) @@ voiceMetric
-    case _ => ZIO.unit.as(Empty())
+    case _ => ZIO.unit.as(Error("type not found"))
   }
 }
 
