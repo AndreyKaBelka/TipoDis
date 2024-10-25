@@ -3,13 +3,17 @@ package com.andreyka.routes
 import model._
 import service.{RequestHandler, RoomService, SessionService}
 import zio.http.ChannelEvent._
+import zio.http.Status.NotImplemented
 import zio.http.{Handler, Method, Response, Route, WebSocketApp, WebSocketChannel, WebSocketFrame, handler}
 import zio.json.{DecoderOps, EncoderOps}
-import zio.{Cause, Task, ZIO, ZLayer}
+import zio.metrics.Metric
+import zio.{Cause, Task, UIO, ZIO, ZLayer}
 
 import java.util.UUID
 
 case class WebsocketSound(requestHandler: RequestHandler, sessionService: SessionService, roomService: RoomService) {
+
+  val newSessionCount = Metric.gauge("new_session_count")
 
   private val socketApp: WebSocketApp[Any] = Handler.webSocket { implicit channel =>
     channel.receiveAll {
@@ -21,7 +25,7 @@ case class WebsocketSound(requestHandler: RequestHandler, sessionService: Sessio
         ) *> roomService.addParticipant(
           Room(UUID.fromString("00000000-0000-0000-0000-000000000000"), Set.empty),
           Session(channel, User(userId))
-        )
+        ) <* newSessionCount.increment
 
       case Read(WebSocketFrame.Text(data)) =>
         data.fromJson[In].fold(
@@ -30,7 +34,9 @@ case class WebsocketSound(requestHandler: RequestHandler, sessionService: Sessio
         )
 
       case Unregistered =>
-        ZIO.log(s"Removing session") *> sessionService.removeSession(channel)
+        ZIO.log(s"Removing session") *> sessionService.removeSession(channel) *> newSessionCount.decrement
+
+      case Read(WebSocketFrame.Close(status, reason)) => ZIO.succeed(NotImplemented)
 
       case ExceptionCaught(cause) => ZIO.logError(s"Channel error!: $cause")
 

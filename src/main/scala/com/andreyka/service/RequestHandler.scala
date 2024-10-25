@@ -2,6 +2,7 @@ package service
 
 import model.Codecs._
 import model._
+import zio.metrics._
 import zio.{Task, ZIO, ZLayer}
 
 case class RequestHandler(
@@ -10,16 +11,20 @@ case class RequestHandler(
                            soundService: SoundService
                          ) {
 
+  private def voiceMetric = Metric.counter("voice_messages").fromConst(1)
+
+  private def roomsGauge = Metric.gauge("rooms_count")
+
   def handle(request: In): Task[Out] = request match {
     case AddToRoom(room, user) =>
-      ZIO.log("Ганджоны здесяяяяяя") *> sessionService.getSession(user).flatMap(
+      sessionService.getSession(user).flatMap(
         roomService.addParticipant(room, _)
       ).as(Empty())
-    case DeleteRoom(room) => roomService.deleteRoom(room).as(Empty())
-    case CreateRoom() => roomService.createRoom.map(room => RoomId(room.roomId))
+    case DeleteRoom(room) => roomService.deleteRoom(room).as(Empty()) <* roomsGauge.decrement
+    case CreateRoom() => roomService.createRoom.map(room => RoomId(room.roomId)) <* roomsGauge.increment
     case RoomsList() => roomService.allRooms.map(RoomsListResponse)
     case SessionsList() => sessionService.allSessions.map(SessionsListResponse)
-    case Voice(soundFrame) => soundService.broadcast(soundFrame).as(Empty())
+    case Voice(soundFrame) => soundService.broadcast(soundFrame).as(Empty()) @@ voiceMetric
     case _ => ZIO.unit.as(Empty())
   }
 }

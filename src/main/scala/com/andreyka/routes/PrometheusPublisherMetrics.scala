@@ -1,20 +1,13 @@
 package com.andreyka.routes
 
-import zio.{Clock, ZIO, ZLayer}
+import service.SessionService
 import zio.http.{Method, Response, Routes, handler}
 import zio.metrics.Metric
 import zio.metrics.connectors.prometheus.PrometheusPublisher
+import zio.{Schedule, ZIO, ZLayer, durationInt}
 
-class PrometheusPublisherMetrics {
-
-  def memoryUsage: ZIO[Any, Nothing, Double] = {
-    import java.lang.Runtime._
-    ZIO
-      .succeed(getRuntime.totalMemory() - getRuntime.freeMemory())
-      .map(_ / (1024.0 * 1024.0)) @@ Metric.gauge("memory_usage")
-  }
-
-  val httpApp =
+case class PrometheusPublisherMetrics() {
+  val httpApp: Routes[PrometheusPublisher, Nothing] =
     Routes(
       Method.GET / "metrics" ->
         handler(ZIO.serviceWithZIO[PrometheusPublisher](_.get.map(Response.text)))

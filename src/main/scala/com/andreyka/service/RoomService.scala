@@ -36,7 +36,7 @@ case class RoomService(
   }
 
   private def replaceRoom(room: Room): Task[Unit] = {
-    rooms.update(oldRooms => oldRooms.filterNot(_.roomId == room.roomId) + room) *> ZIO.log(s"ХУЕТАТТАТАТА ${rooms.get}")
+    rooms.update(oldRooms => oldRooms.filterNot(_.roomId == room.roomId) + room)
   }
 
   def removeParticipant(roomId: Room, session: Session): Task[Unit] = for {
