@@ -1,6 +1,6 @@
 package service
 
-import model.{Room, SoundFrame, User}
+import model.SoundFrame
 import zio.http.ChannelEvent.Read
 import zio.http.WebSocketFrame
 import zio.json.EncoderOps
@@ -9,6 +9,7 @@ import zio.{Task, ZIO, ZLayer}
 case class SoundService(roomService: RoomService) {
 
   def broadcast(soundFrame: SoundFrame): Task[Unit] = for {
+    _ <- ZIO.log(s"Broadcasting message: room ${soundFrame.room}, user: ${soundFrame.user}")
     room <- roomService.findRoom(soundFrame.room)
     sessions = room.sessions.filterNot(_.user.userId == soundFrame.user.userId)
     _ <- ZIO.foreach(sessions)(session => session.socket.send(

@@ -1,16 +1,15 @@
 package routes
 
 import model._
-import service.{RequestHandler, SessionService}
-import zio.http.ChannelEvent.{ExceptionCaught, Read, Unregistered, UserEvent, UserEventTriggered}
-import zio.http.WebSocketFrame.Close
-import zio.http.{Handler, Method, Request, Response, Route, WebSocketApp, WebSocketChannel, WebSocketFrame, handler}
+import service.{RequestHandler, RoomService, SessionService}
+import zio.http.ChannelEvent._
+import zio.http.{Handler, Method, Response, Route, WebSocketApp, WebSocketChannel, WebSocketFrame, handler}
 import zio.json.{DecoderOps, EncoderOps}
 import zio.{Cause, Task, ZIO, ZLayer}
 
 import java.util.UUID
 
-case class WebsocketSound(requestHandler: RequestHandler, sessionService: SessionService) {
+case class WebsocketSound(requestHandler: RequestHandler, sessionService: SessionService, roomService: RoomService) {
 
   val socketApp: WebSocketApp[Any] = Handler.webSocket { implicit channel =>
     channel.receiveAll {
@@ -19,6 +18,9 @@ case class WebsocketSound(requestHandler: RequestHandler, sessionService: Sessio
         sessionService.addSession(User(userId), channel).tapBoth(
           err => ZIO.logErrorCause("Some error: ", Cause.die(err)) *> channel.shutdown,
           _ => ZIO.log(s"Added new session: $userId") *> send(UserId(userId))
+        ) *> roomService.addParticipant(
+          Room(UUID.fromString("00000000-0000-0000-0000-000000000000"), Set.empty),
+          Session(channel, User(userId))
         )
 
       case Read(WebSocketFrame.Text(data)) =>
