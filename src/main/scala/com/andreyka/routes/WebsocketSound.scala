@@ -41,7 +41,7 @@ case class WebsocketSound(requestHandler: RequestHandler, sessionService: Sessio
       case ExceptionCaught(cause) => ZIO.logError(s"Channel error!: $cause")
 
       case _ => ZIO.unit
-    }.onError { err =>
+    }.catchAll { err =>
       ZIO.logError(s"Some error occurred: $err")
     }
   }
