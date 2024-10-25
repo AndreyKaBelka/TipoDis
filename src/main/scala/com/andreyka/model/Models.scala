@@ -12,6 +12,6 @@ case class Session(socket: WebSocketChannel, user: User)
 case class User(userId: UUID)
 
 @jsonDerive
-case class SoundFrame(user: User, room: Room, sound: Array[Byte])
+case class SoundFrame(user: User, room: Room, sound: Array[Float])
 
 case class Room(roomId: UUID, sessions: Set[Session])
