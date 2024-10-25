@@ -4,6 +4,8 @@ import routes.WebsocketSound
 import service.{RequestHandler, RoomService, SessionService, SoundService}
 import zio.config.typesafe.TypesafeConfigProvider
 import zio.http._
+import zio.http.endpoint.Endpoint
+import zio.http.endpoint.openapi.{OpenAPIGen, SwaggerUI}
 import zio.logging.consoleLogger
 import zio.{Config, ConfigProvider, LogAnnotation, Runtime, Task, ZIO, ZIOAppDefault, ZLayer}
 
@@ -31,7 +33,10 @@ object Main extends ZIOAppDefault {
   override def run: Task[Unit] = (for {
     _ <- ZIO.log("Starting server...")
     wsRoutes <- ZIO.serviceWith[WebsocketSound](_.route)
-    _ <- Server.serve(Routes(wsRoutes).handleError(e => Response.internalServerError(e.toString)))
+    openApi = OpenAPIGen.gen(Endpoint(wsRoutes.routePattern))
+    swaggerRoutes = SwaggerUI.routes("docs", openApi)
+    _ <- ZIO.serviceWithZIO[RoomService](_.createDefaultRoom)
+    _ <- Server.serve((wsRoutes.toRoutes ++ swaggerRoutes).handleError(e => Response.internalServerError(e.toString)))
   } yield ()).provide(
     Server.default,
     RoomService.live,

@@ -17,6 +17,13 @@ case class RoomService(
     _ <- rooms.update(_ + room)
   } yield room
 
+  def createDefaultRoom: Task[Unit] = for {
+    uuid <- ZIO.succeed(UUID.fromString("00000000-0000-0000-0000-000000000000"))
+    sessions = Set.empty[Session]
+    room = Room(uuid, sessions)
+    _ <- rooms.update(_ + room)
+  } yield ()
+
   def addParticipant(roomId: Room, session: Session): Task[Unit] = for {
     room <- findRoom(roomId)
     newSessions = room.sessions.filterNot(_.user.userId == session.user.userId) + session
