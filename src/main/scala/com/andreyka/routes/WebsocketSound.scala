@@ -1,4 +1,4 @@
-package routes
+package com.andreyka.routes
 
 import model._
 import service.{RequestHandler, RoomService, SessionService}
@@ -11,7 +11,7 @@ import java.util.UUID
 
 case class WebsocketSound(requestHandler: RequestHandler, sessionService: SessionService, roomService: RoomService) {
 
-  val socketApp: WebSocketApp[Any] = Handler.webSocket { implicit channel =>
+  private val socketApp: WebSocketApp[Any] = Handler.webSocket { implicit channel =>
     channel.receiveAll {
       case UserEventTriggered(UserEvent.HandshakeComplete) =>
         val userId = UUID.randomUUID()
@@ -32,11 +32,11 @@ case class WebsocketSound(requestHandler: RequestHandler, sessionService: Sessio
       case Unregistered =>
         ZIO.log(s"Removing session") *> sessionService.removeSession(channel)
 
-      case ExceptionCaught(cause) => ZIO.logError(s"Channel error!: ${cause.getMessage}")
+      case ExceptionCaught(cause) => ZIO.logError(s"Channel error!: $cause")
 
       case _ => ZIO.unit
     }.onError { err =>
-      ZIO.log(s"Some error occurred: $err")
+      ZIO.logError(s"Some error occurred: $err")
     }
   }
 

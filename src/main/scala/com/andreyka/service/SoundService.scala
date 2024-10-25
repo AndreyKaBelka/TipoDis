@@ -15,7 +15,7 @@ case class SoundService(roomService: RoomService) {
     errors <- ZIO.partitionPar(sessions)(session => session.socket.send(
       Read(WebSocketFrame.Text(soundFrame.toJson))
     ))
-    _ <- ZIO.log(s"Some errors occurred: ${errors._1.size}, firstError: ${errors._1.headOption}")
+    _ <- ZIO.logError(s"Some errors occurred: ${errors._1.size}, firstError: ${errors._1.headOption}")
       .when(errors._1.nonEmpty)
   } yield ()
 }

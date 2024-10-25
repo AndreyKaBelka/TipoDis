@@ -19,7 +19,8 @@ libraryDependencies ++= Seq(
   "dev.zio" %% "zio-http" % "3.0.1",
   "dev.zio" %% "zio-logging" % "2.3.2",
   "dev.zio" %% "zio-interop-cats" % "23.1.0.3",
-  "dev.zio" % "zio-json-macros_2.13" % "0.7.1"
+  "dev.zio" % "zio-json-macros_2.13" % "0.7.1",
+  "dev.zio" %% "zio-metrics-connectors-prometheus" % "2.3.1"
 )
 
 libraryDependencies += "dev.zio" %% "zio-config"          % "4.0.2"
