@@ -11,7 +11,6 @@ enablePlugins(JavaAppPackaging)
 enablePlugins(DockerPlugin)
 
 maintainer := "AndreyKa"
-Compile / mainClass := Some("com.andreyka.Main.run")
 
 val zioVersion = "2.1.6"
 libraryDependencies ++= Seq(
