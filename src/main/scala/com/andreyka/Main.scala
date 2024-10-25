@@ -35,12 +35,10 @@ object Main extends ZIOAppDefault {
   override def run: Task[Unit] = (for {
     _ <- ZIO.log("Starting server...")
     wsRoutes <- ZIO.serviceWith[WebsocketSound](_.route)
-    openApi = OpenAPIGen.gen(Endpoint(wsRoutes.routePattern))
-    swaggerRoutes = SwaggerUI.routes("docs", openApi)
     prometheusMetrics <- ZIO.serviceWith[PrometheusPublisherMetrics](_.httpApp)
     _ <- ZIO.serviceWithZIO[RoomService](_.createDefaultRoom)
     _ <- Server.serve((
-      wsRoutes.toRoutes ++ swaggerRoutes ++ prometheusMetrics
+      wsRoutes.toRoutes ++ prometheusMetrics
       ).handleError(e => Response.internalServerError(e.toString)))
   } yield ()).provide(
     Server.default,
