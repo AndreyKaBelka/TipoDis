@@ -17,13 +17,7 @@ class PrometheusPublisherMetrics {
   val httpApp =
     Routes(
       Method.GET / "metrics" ->
-        handler(ZIO.serviceWithZIO[PrometheusPublisher](_.get.map(Response.text))),
-      Method.GET / "foo" -> handler {
-        for {
-          _    <- memoryUsage
-          time <- Clock.currentDateTime
-        } yield Response.text(s"$time\t/foo API called")
-      }
+        handler(ZIO.serviceWithZIO[PrometheusPublisher](_.get.map(Response.text)))
     )
 
 }

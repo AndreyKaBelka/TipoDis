@@ -9,6 +9,7 @@ import zio.http.endpoint.openapi.{OpenAPIGen, SwaggerUI}
 import zio.logging.consoleLogger
 import zio.{Config, ConfigProvider, LogAnnotation, Runtime, Task, ZIO, ZIOAppDefault, ZLayer, durationInt}
 import zio.metrics.connectors.{MetricsConfig, prometheus}
+import zio.metrics.jvm.DefaultJvmMetrics
 
 object Main extends ZIOAppDefault {
 
@@ -48,7 +49,7 @@ object Main extends ZIOAppDefault {
     SoundService.live,
     SessionService.live,
     RequestHandler.live,
-    PrometheusPublisherMetrics.live,
+    DefaultJvmMetrics.live >+> PrometheusPublisherMetrics.live,
     prometheus.prometheusLayer,
     prometheus.publisherLayer,
     ZLayer.succeed(MetricsConfig(5.seconds))
