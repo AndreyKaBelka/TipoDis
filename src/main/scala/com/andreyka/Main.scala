@@ -4,8 +4,6 @@ import com.andreyka.routes.{PrometheusPublisherMetrics, WebsocketSound}
 import service.{RequestHandler, RoomService, SessionService, SoundService}
 import zio.config.typesafe.TypesafeConfigProvider
 import zio.http._
-import zio.http.endpoint.Endpoint
-import zio.http.endpoint.openapi.{OpenAPIGen, SwaggerUI}
 import zio.logging.consoleLogger
 import zio.metrics.connectors.{MetricsConfig, prometheus}
 import zio.metrics.jvm.DefaultJvmMetrics
@@ -13,6 +11,8 @@ import zio.{Config, ConfigProvider, Runtime, Task, ZIO, ZIOAppDefault, ZLayer, d
 
 object Main extends ZIOAppDefault {
 
+  override val bootstrap: ZLayer[Any, Config.Error, Unit] =
+    Runtime.removeDefaultLoggers >>> Runtime.setConfigProvider(configProvider) >>> consoleLogger()
   private val configString: String =
     s"""
        |logger {
@@ -26,11 +26,7 @@ object Main extends ZIOAppDefault {
        |  }
        |}
        |""".stripMargin
-
   private val configProvider: ConfigProvider = TypesafeConfigProvider.fromHoconString(configString)
-
-  override val bootstrap: ZLayer[Any, Config.Error, Unit] =
-    Runtime.removeDefaultLoggers >>> Runtime.setConfigProvider(configProvider) >>> consoleLogger()
 
   override def run: Task[Unit] = (for {
     _ <- ZIO.log("Starting server...")

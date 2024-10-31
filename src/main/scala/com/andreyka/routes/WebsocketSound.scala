@@ -7,14 +7,14 @@ import zio.http.Status.NotImplemented
 import zio.http.{Handler, Method, Response, Route, WebSocketApp, WebSocketChannel, WebSocketFrame, handler}
 import zio.json.{DecoderOps, EncoderOps}
 import zio.metrics.Metric
-import zio.{Cause, Task, UIO, ZIO, ZLayer}
+import zio.{Cause, Task, ZIO, ZLayer}
 
 import java.util.UUID
 
 case class WebsocketSound(requestHandler: RequestHandler, sessionService: SessionService, roomService: RoomService) {
 
   val newSessionCount = Metric.gauge("new_session_count")
-
+  val route: Route[Any, Response] = Method.GET / "ws" -> handler(socketApp.toResponse)
   private val socketApp: WebSocketApp[Any] = Handler.webSocket { implicit channel =>
     channel.receiveAll {
       case UserEventTriggered(UserEvent.HandshakeComplete) =>
@@ -49,9 +49,6 @@ case class WebsocketSound(requestHandler: RequestHandler, sessionService: Sessio
   private def send(data: Out)(implicit channel: WebSocketChannel): Task[Unit] = {
     channel.send(Read(WebSocketFrame.Text(data.toJson)))
   }
-
-
-  val route: Route[Any, Response] = Method.GET / "ws" -> handler(socketApp.toResponse)
 }
 
 object WebsocketSound {

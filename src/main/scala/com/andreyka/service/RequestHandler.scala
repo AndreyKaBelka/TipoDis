@@ -11,10 +11,6 @@ case class RequestHandler(
                            soundService: SoundService
                          ) {
 
-  private def voiceMetric = Metric.counter("voice_messages").fromConst(1)
-
-  private def roomsGauge = Metric.gauge("rooms_count")
-
   def handle(request: In): Task[Out] = request match {
     case AddToRoom(room, user) =>
       sessionService.getSession(user).flatMap(
@@ -27,6 +23,10 @@ case class RequestHandler(
     case Voice(soundFrame) => soundService.broadcast(soundFrame).as(Empty()) @@ voiceMetric
     case _ => ZIO.unit.as(Error("type not found"))
   }
+
+  private def voiceMetric = Metric.counter("voice_messages").fromConst(1)
+
+  private def roomsGauge = Metric.gauge("rooms_count")
 }
 
 object RequestHandler {

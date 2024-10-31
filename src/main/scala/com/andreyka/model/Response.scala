@@ -1,9 +1,9 @@
 package model
 
+import model.Codecs._
 import zio.json.{SnakeCase, jsonDerive, jsonDiscriminator, jsonHintNames}
 
 import java.util.UUID
-import model.Codecs._
 
 @jsonDerive
 @jsonDiscriminator("$type")
