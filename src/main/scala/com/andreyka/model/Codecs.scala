@@ -1,4 +1,4 @@
-package model
+package com.andreyka.model
 
 import zio.json._
 
@@ -6,21 +6,13 @@ import java.util.UUID
 
 object Codecs {
   implicit val roomDecoder: JsonDecoder[Room] = {
-    JsonDecoder[UUID].map(Room(_, Set.empty))
+    JsonDecoder[UUID].map(Room(_, null))
   }
 
   implicit val roomEncoder: JsonEncoder[Room] = {
-    JsonEncoder[(UUID, Set[UUID])].contramap(
+    JsonEncoder[UUID].contramap(
       (room: Room) =>
-        room.roomId -> room.sessions.map(_.user.userId)
+        room.roomId
     )
-  }
-
-  implicit val userEncoder: JsonEncoder[User] = {
-    JsonEncoder[UUID].contramap((user: User) => user.userId)
-  }
-
-  implicit val userDecoder: JsonDecoder[User] = {
-    JsonDecoder[UUID].map(User)
   }
 }

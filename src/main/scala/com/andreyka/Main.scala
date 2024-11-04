@@ -1,7 +1,7 @@
 package com.andreyka
 
 import com.andreyka.routes.{PrometheusPublisherMetrics, WebsocketSound}
-import service.{RequestHandler, RoomService, SessionService, SoundService}
+import com.andreyka.service.{RequestHandler, RoomService, SoundService}
 import zio.config.typesafe.TypesafeConfigProvider
 import zio.http._
 import zio.logging.consoleLogger
@@ -41,7 +41,6 @@ object Main extends ZIOAppDefault {
     RoomService.live,
     WebsocketSound.live,
     SoundService.live,
-    SessionService.live,
     RequestHandler.live,
     DefaultJvmMetrics.live.unit,
     PrometheusPublisherMetrics.live,

@@ -1,8 +1,12 @@
-package service
+package com.andreyka.service
 
-import model.{Room, Session}
-import service.RoomService._
-import zio.{Ref, Task, ZIO, ZLayer}
+import com.andreyka.model.{Room, SoundFrame}
+import com.andreyka.service.RoomService.CantAddParticipant
+import zio.http.ChannelEvent.Read
+import zio.http.{WebSocketChannel, WebSocketFrame}
+import zio.json.EncoderOps
+import zio.stream.ZStream
+import zio.{Hub, Promise, Ref, Task, ZIO, ZLayer}
 
 import java.util.UUID
 
@@ -12,39 +16,32 @@ case class RoomService(
 
   def createRoom: Task[Room] = for {
     uuid <- ZIO.succeed(UUID.randomUUID())
-    sessions = Set.empty[Session]
-    room = Room(uuid, sessions)
+    hub <- Hub.bounded[SoundFrame](1024)
+    room = Room(uuid, hub)
     _ <- rooms.update(_ + room)
   } yield room
 
   def createDefaultRoom: Task[Unit] = for {
     uuid <- ZIO.succeed(UUID.fromString("00000000-0000-0000-0000-000000000000"))
-    sessions = Set.empty[Session]
-    room = Room(uuid, sessions)
+    hub <- Hub.bounded[SoundFrame](1024)
+    room = Room(uuid, hub)
     _ <- rooms.update(_ + room)
   } yield ()
 
-  def addParticipant(roomId: Room, session: Session): Task[Unit] = for {
+  def addListener(roomId: UUID, isClosed: Promise[Throwable, Unit])(implicit channel: WebSocketChannel, userId: UUID): Task[Unit] = for {
+    _ <- ZIO.log("Adding new subscriber")
     room <- findRoom(roomId)
-    newSessions = room.sessions.filterNot(_.user.userId == session.user.userId) + session
-    _ <- ZIO.log(s"Updating room ${room.roomId} with user ${session.user.userId}, newSessions: $newSessions")
-    _ <- replaceRoom(Room(room.roomId, newSessions))
+    messageHub = room.hub
+    stream = ZStream.fromHub(messageHub)
+    _ <- stream.interruptWhen(isClosed.await).foreach(
+      sf => channel.send(Read(WebSocketFrame.Text(sf.toJson))).when(userId != sf.userId)
+    ).forkDaemon
+    _ <- ZIO.log(s"Added listener for room ${room.roomId}")
   } yield ()
 
-  def findRoom(room: Room): Task[Room] = {
-    rooms.get.map(_.find(_.roomId == room.roomId)).someOrFail(CantAddParticipant(room.roomId))
+  def findRoom(roomId: UUID): Task[Room] = {
+    rooms.get.map(_.find(_.roomId == roomId)).someOrFail(CantAddParticipant(roomId))
   }
-
-  private def replaceRoom(room: Room): Task[Unit] = {
-    rooms.update(oldRooms => oldRooms.filterNot(_.roomId == room.roomId) + room)
-  }
-
-  def removeParticipant(roomId: Room, session: Session): Task[Unit] = for {
-    room <- findRoom(roomId)
-    updatedSessions = room.sessions.filterNot(_.user.userId == session.user.userId)
-    newRoom = Room(room.roomId, updatedSessions)
-    _ = replaceRoom(newRoom)
-  } yield ()
 
   def allRooms: Task[Set[Room]] = for {
     rooms <- rooms.get

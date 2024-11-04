@@ -1,26 +1,24 @@
-package service
+package com.andreyka.service
 
-import model.Codecs._
-import model._
+import com.andreyka.model._
+import zio.http.WebSocketChannel
 import zio.metrics._
-import zio.{Task, ZIO, ZLayer}
+import zio.{Promise, Task, ZIO, ZLayer}
+
+import java.util.UUID
 
 case class RequestHandler(
                            roomService: RoomService,
-                           sessionService: SessionService,
                            soundService: SoundService
                          ) {
 
-  def handle(request: In): Task[Out] = request match {
-    case AddToRoom(room, user) =>
-      sessionService.getSession(user).flatMap(
-        roomService.addParticipant(room, _)
-      ).as(Empty())
+  def handle(request: In, isClosed: Promise[Throwable, Unit])(implicit webSocket: WebSocketChannel, userId: UUID): Task[Out] = request match {
+    case AddToRoom(room) =>
+      roomService.addListener(room.roomId, isClosed).as(Empty())
     case DeleteRoom(room) => roomService.deleteRoom(room).as(Empty()) <* roomsGauge.decrement
     case CreateRoom() => roomService.createRoom.map(room => RoomId(room.roomId)) <* roomsGauge.increment
     case RoomsList() => roomService.allRooms.map(RoomsListResponse)
-    case SessionsList() => sessionService.allSessions.map(SessionsListResponse)
-    case Voice(soundFrame) => soundService.broadcast(soundFrame).as(Empty()) @@ voiceMetric
+    case Voice(soundFrame) => soundService.addNewVoice(soundFrame).as(Empty()) @@ voiceMetric
     case _ => ZIO.unit.as(Error("type not found"))
   }
 

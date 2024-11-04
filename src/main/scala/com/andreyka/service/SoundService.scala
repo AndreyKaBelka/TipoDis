@@ -1,25 +1,23 @@
-package service
+package com.andreyka.service
 
-import model.SoundFrame
-import zio.http.ChannelEvent.Read
-import zio.http.WebSocketFrame
-import zio.json.EncoderOps
+import com.andreyka.model.SoundFrame
 import zio.{Task, ZIO, ZLayer}
+
 
 case class SoundService(roomService: RoomService) {
 
-  def broadcast(soundFrame: SoundFrame): Task[Unit] = for {
-    _ <- ZIO.log(s"Broadcasting message: room ${soundFrame.room}, user: ${soundFrame.user}")
-    room <- roomService.findRoom(soundFrame.room)
-    sessions = room.sessions.filterNot(_.user.userId == soundFrame.user.userId)
-    errors <- ZIO.partitionPar(sessions)(session => session.socket.send(
-      Read(WebSocketFrame.Text(soundFrame.toJson))
-    ))
-    _ <- ZIO.logError(s"Some errors occurred: ${errors._1.size}, firstError: ${errors._1.headOption}")
-      .when(errors._1.nonEmpty)
+  def addNewVoice(soundFrame: SoundFrame): Task[Unit] = for {
+    _ <- ZIO.log(s"New voice coming: room=${soundFrame.room} user=${soundFrame.userId}")
+    messageHub <- roomService.findRoom(soundFrame.room.roomId).map(_.hub)
+    _ <- messageHub
+      .publish(soundFrame)
   } yield ()
 }
 
 object SoundService {
-  val live = ZLayer.derive[SoundService]
+  val live = ZLayer {
+    for {
+      roomService <- ZIO.service[RoomService]
+    } yield new SoundService(roomService)
+  }
 }

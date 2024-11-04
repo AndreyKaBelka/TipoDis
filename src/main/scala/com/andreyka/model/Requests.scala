@@ -1,7 +1,7 @@
-package model
+package com.andreyka.model
 
-import model.Codecs._
 import zio.json.{SnakeCase, jsonDerive, jsonDiscriminator, jsonHintNames}
+import com.andreyka.model.Codecs._
 
 @jsonDiscriminator("$type")
 @jsonHintNames(SnakeCase)
@@ -12,11 +12,9 @@ case class CreateRoom() extends In
 
 case class DeleteRoom(room: Room) extends In
 
-case class AddToRoom(room: Room, user: User) extends In
+case class AddToRoom(room: Room) extends In
 
 case class Voice(soundFrame: SoundFrame) extends In
 
 case class RoomsList() extends In
-
-case class SessionsList() extends In
 

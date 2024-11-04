@@ -1,17 +1,12 @@
-package model
+package com.andreyka.model
 
-import model.Codecs._
-import zio.http.WebSocketChannel
+import zio.Hub
 import zio.json.jsonDerive
+import com.andreyka.model.Codecs._
 
 import java.util.UUID
 
-case class Session(socket: WebSocketChannel, user: User)
-
 @jsonDerive
-case class User(userId: UUID)
+case class SoundFrame(room: Room, sound: Array[Float], userId: UUID)
 
-@jsonDerive
-case class SoundFrame(user: User, room: Room, sound: Array[Float])
-
-case class Room(roomId: UUID, sessions: Set[Session])
+case class Room(roomId: UUID, hub: Hub[SoundFrame])

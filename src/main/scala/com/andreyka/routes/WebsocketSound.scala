@@ -1,49 +1,51 @@
 package com.andreyka.routes
 
-import model._
-import service.{RequestHandler, RoomService, SessionService}
+import com.andreyka.model._
+import com.andreyka.service.{RequestHandler, RoomService, SoundService}
 import zio.http.ChannelEvent._
-import zio.http.Status.NotImplemented
 import zio.http.{Handler, Method, Response, Route, WebSocketApp, WebSocketChannel, WebSocketFrame, handler}
 import zio.json.{DecoderOps, EncoderOps}
 import zio.metrics.Metric
-import zio.{Cause, Task, ZIO, ZLayer}
+import zio.{Promise, Task, ZIO, ZLayer}
 
 import java.util.UUID
 
-case class WebsocketSound(requestHandler: RequestHandler, sessionService: SessionService, roomService: RoomService) {
+case class WebsocketSound(
+                           requestHandler: RequestHandler,
+                           roomService: RoomService,
+                           soundService: SoundService
+                         ) {
 
-  val newSessionCount = Metric.gauge("new_session_count")
   val route: Route[Any, Response] = Method.GET / "ws" -> handler(socketApp.toResponse)
+  private val newSessionCount = Metric.gauge("new_session_count")
   private val socketApp: WebSocketApp[Any] = Handler.webSocket { implicit channel =>
-    channel.receiveAll {
+    implicit val userId: UUID = UUID.randomUUID()
+    val isClosed = Promise.make[Throwable, Unit]
+    isClosed.flatMap(isClosed => channel.receiveAll {
       case UserEventTriggered(UserEvent.HandshakeComplete) =>
-        val userId = UUID.randomUUID()
-        sessionService.addSession(User(userId), channel).tapBoth(
-          err => ZIO.logErrorCause("Some error: ", Cause.die(err)) *> channel.shutdown,
-          _ => ZIO.log(s"Added new session: $userId") *> send(UserId(userId))
-        ) *> roomService.addParticipant(
-          Room(UUID.fromString("00000000-0000-0000-0000-000000000000"), Set.empty),
-          Session(channel, User(userId))
-        ) <* newSessionCount.increment
+        ZIO.collectAllDiscard(Seq(
+          roomService.addListener(UUID.fromString("00000000-0000-0000-0000-000000000000"), isClosed),
+          newSessionCount.increment,
+          send(UserId(userId))
+        ))
 
       case Read(WebSocketFrame.Text(data)) =>
-        data.fromJson[In].fold(
+        val json = data.fromJson[In]
+
+        ZIO.fromEither(json).foldZIO(
           err => send(Error(err)),
-          suc => requestHandler.handle(suc).flatMap(send)
+          suc => requestHandler.handle(suc, isClosed).flatMap(send)
         )
 
       case Unregistered =>
-        ZIO.log(s"Removing session") *> sessionService.removeSession(channel) *> newSessionCount.decrement
+        ZIO.log(s"Removing session") *> isClosed.succeed() *> newSessionCount.decrement
 
-      case Read(WebSocketFrame.Close(status, reason)) => ZIO.succeed(NotImplemented)
-
-      case ExceptionCaught(cause) => ZIO.logError(s"Channel error!: $cause")
+      case ExceptionCaught(cause) => ZIO.logError(s"Channel error!: $cause") *> isClosed.fail(cause)
 
       case _ => ZIO.unit
     }.catchAll { err =>
       ZIO.logError(s"Some error occurred: $err")
-    }
+    })
   }
 
   private def send(data: Out)(implicit channel: WebSocketChannel): Task[Unit] = {
